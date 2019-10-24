@@ -28,7 +28,7 @@ class MonkeyCompilerIDE extends Component {
             keyWords={this.lexer.getKeyWords()}
           />
           <bootstrap.Button bsStyle="primary" style={{ marginTop: 15 }} onClick={this.onLexingClick}>
-            Lexing
+            编译
           </bootstrap.Button>
         </bootstrap.Panel.Body>
       </bootstrap.Panel>
