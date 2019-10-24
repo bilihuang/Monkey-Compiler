@@ -1,8 +1,8 @@
-/* eslint-disable no-useless-constructor */
 import React, { Component } from 'react'
 import * as bootstrap from 'react-bootstrap'
 import MonkeyLexer from './MonkeyLexer'
 import MonkeyCompilerEditer from './MonkeyCompilerEditer'
+import MonkeyCompilerParser from './MonkeyCompilerParser'
 
 class MonkeyCompilerIDE extends Component {
 
@@ -15,7 +15,12 @@ class MonkeyCompilerIDE extends Component {
 
   onLexingClick () {
     this.lexer = new MonkeyLexer(this.inputInstance.getContent())
-    this.lexer.lexing()
+    this.parser = new MonkeyCompilerParser(this.lexer)
+    this.parser.parseProgram()
+    this.program = this.parser.program
+    for (let i = 0; i < this.program.statements.length; i++) {
+      console.log(this.program.statements[i].getLiteral())
+    }
   }
 
   render () {

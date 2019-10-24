@@ -26,7 +26,7 @@ class MonkeyLexer {
     this.initTokenType()
     this.initKeywords()
     this.sourceCode = sourceCode
-    this.positon = 0
+    this.position = 0
     this.readPosition = 0
     this.lineCount = 0
     this.ch = ''  // 当前读取字符
@@ -39,12 +39,31 @@ class MonkeyLexer {
     this.EOF = -1 // 结束符
     this.LET = 0 // let关键字
     this.IDENTIFIER = 1 // 标识符
-    this.EQUAL_SIGN = 2 // 等号
-    this.PLUS_SIGN = 3 // 加号
+    this.ASSIGN_SIGN = 2 // =
+    this.PLUS_SIGN = 3 // +
     this.INTEGER = 4 // 整数
-    this.SEMICOLON = 5 // 分号
+    this.SEMICOLON = 5 // ;
     this.IF = 6 // if
     this.ELSE = 7 // else
+    this.MINUS_SIGN = 8 // -
+    this.BANG_SIGN = 9 // !
+    this.ASTERISK = 10 // *
+    this.SLASH = 11 // /
+    this.LT = 12 // <
+    this.GT = 13 // >
+    this.COMMA = 14 // ,
+
+    this.FUNCTION = 15
+    this.TRUE = 16
+    this.FALSE = 17
+    this.RETURN = 18
+
+    this.LEFT_BRACE = 19 // {}
+    this.RIGHT_BRACE = 20 // }
+    this.EQ = 21 // ==
+    this.NOT_EQ = 22 // !=
+    this.LEFT_PARENT = 23 // (
+    this.RIGHT_PARENT = 24 // )
   }
 
   initKeywords () {
@@ -52,6 +71,10 @@ class MonkeyLexer {
     this.keyWordMap["let"] = new Token(this.LET, "let", 0)
     this.keyWordMap["if"] = new Token(this.IF, "if", 0)
     this.keyWordMap["ELSE"] = new Token(this.ELSE, "else", 0)
+    this.keyWordMap["fn"] = new Token(this.FUNCTION, "fn", 0)
+    this.keyWordMap["true"] = new Token(this.TRUE, "true", 0)
+    this.keyWordMap["false"] = new Token(this.FALSE, "false", 0)
+    this.keyWordMap["return"] = new Token(this.RETURN, "return", 0)
   }
 
   // 返回代码关键字对象
@@ -69,7 +92,11 @@ class MonkeyLexer {
 
   // 通知观察者
   notifyObserver (token) {
-    this.observer.notifyTokenCreation(token, this.observerContext, this.positon - 1, this.readPosition)
+    if (this.observer !== null) {
+      this.observer.notifyTokenCreation(token,
+        this.observerContext, this.position - 1,
+        this.readPosition)
+    }
   }
 
   // 读取字符，每次读取一个
@@ -80,6 +107,15 @@ class MonkeyLexer {
       this.ch = this.sourceCode[this.readPosition]
     }
     this.readPosition++
+  }
+
+  // 读取下一字符，判断如==的情况
+  peekChar () {
+    if (this.readPosition >= this.sourceCode.length) {
+      return 0
+    } else {
+      return this.sourceCode[this.readPosition]
+    }
   }
 
   // 忽略空格和换行
@@ -97,11 +133,16 @@ class MonkeyLexer {
     this.skipWhiteSpaceAndNewLine()
     const lineCount = this.lineCount
     let needReadChar = true
-    this.positon = this.readPosition
+    this.position = this.readPosition
 
     switch (this.ch) {
       case '=':
-        tok = new Token(this.EQUAL_SIGN, "=", lineCount)
+        if (this.peekChar() === '=') {
+          this.readChar()
+          tok = new Token(this.EQ, "==", lineCount)
+        } else {
+          tok = new Token(this.ASSIGN_SIGN, "=", lineCount)
+        }
         break
       case ';':
         tok = new Token(this.SEMICOLON, ";", lineCount)
@@ -109,6 +150,44 @@ class MonkeyLexer {
       case '+':
         tok = new Token(this.PLUS_SIGN, "+", lineCount)
         break
+      case '-':
+        tok = new Token(this.MINUS_SIGN, "-", lineCount)
+        break
+      case '!':
+        if (this.peekChar() === '=') {
+          this.readChar()
+          tok = new Token(this.NOT_EQ, "!=", lineCount)
+        } else {
+          tok = new Token(this.BANG_SIGN, "!", lineCount)
+        }
+        break
+      case '*':
+        tok = new Token(this.ASTERISK, "*", lineCount)
+        break
+      case '/':
+        tok = new Token(this.SLASH, "/", lineCount)
+        break
+      case '<':
+        tok = new Token(this.LT, "<", lineCount)
+        break
+      case '>':
+        tok = new Token(this.GT, ">", lineCount)
+        break
+      case ',':
+        tok = new Token(this.COMMA, ",", lineCount)
+        break;
+      case '{':
+        tok = new Token(this.LEFT_BRACE, "{", lineCount)
+        break;
+      case '}':
+        tok = new Token(this.RIGHT_BRACE, "}", lineCount)
+        break;
+      case '(':
+        tok = new Token(this.LEFT_PARENT, "(", lineCount)
+        break;
+      case ')':
+        tok = new Token(this.RIGHT_BRACE, ")", lineCount)
+        break;
       case -1:
         tok = new Token(this.EOF, "", lineCount)
         break
@@ -182,13 +261,15 @@ class MonkeyLexer {
   // 主函数
   lexing () {
     this.readChar()
-    let tokens = []
+    this.tokens = []
     let token = this.nextToken()
     while (token !== undefined && token.getType() !== this.EOF) {
       console.log(token)
-      tokens.push(token)
+      this.tokens.push(token)
       token = this.nextToken()
     }
+
+    this.tokens.push(token)
   }
 }
 
