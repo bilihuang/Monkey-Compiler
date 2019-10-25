@@ -85,7 +85,19 @@ class PrefixExpression extends Expression {
     this.token = props.token
     this.operator = props.operator
     this.right = props.expression
-    this.tokenLiteral=`(${this.operator}${this.right.getLiteral()})`
+    this.tokenLiteral = `(${this.operator} ${this.right.getLiteral()})`
+  }
+}
+
+// 中序表达式
+class InfixExpression extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.left = props.leftExpression
+    this.operator = props.operator
+    this.right = props.rightExpression
+    this.tokenLiteral = `(${this.left.getLiteral()} ${this.operator} ${this.right.getLiteral()})`
   }
 }
 
@@ -111,7 +123,7 @@ class MonkeyCompilerParser {
     this.curToken = null // 当前token
     this.peekToken = null // 下一token
 
-    // 保存对应的解析方法
+    // 保存对应的前序表达式解析方法
     this.prefixParseFns = {
       [this.lexer.IDENTIFIER]: this.parseIdentifier,
       [this.lexer.INTEGER]: this.parseIntegerLiteral,
@@ -119,6 +131,20 @@ class MonkeyCompilerParser {
       [this.lexer.MINUS_SIGN]: this.parsePrefixExpression
     }
 
+    // 中序表达式解析方法
+    this.infixParseFns = {
+      [this.lexer.PLUS_SIGN]: this.parseInfixExpression,
+      [this.lexer.MINUS_SIGN]: this.parseInfixExpression,
+      [this.lexer.SLASH]: this.parseInfixExpression,
+      [this.lexer.ASTERISK]: this.parseInfixExpression,
+      [this.lexer.EQ]: this.parseInfixExpression,
+      [this.lexer.NOT_EQ]: this.parseInfixExpression,
+      [this.lexer.LT]: this.parseInfixExpression,
+      [this.lexer.GT]: this.parseInfixExpression,
+      [this.lexer.PLUS_SIGN]: this.parseInfixExpression
+    }
+
+    // 算术表达式优先级 6最高
     this.LOWEST = 0
     this.EQUALS = 1  // ==
     this.LESSGREATER = 2 // < or >
@@ -126,6 +152,19 @@ class MonkeyCompilerParser {
     this.PRODUCT = 4
     this.PREFIX = 5 //-X or !X
     this.CALL = 6  //myFunction(X)
+
+    // 存储运算符优先级
+    this.precedencesMap = {
+      [this.lexer.EQ]: this.EQUALS,
+      [this.lexer.NOT_EQ]: this.EQUALS,
+      [this.lexer.LT]: this.LESSGREATER,
+      [this.lexer.GT]: this.LESSGREATER,
+      [this.lexer.PLUS_SIGN]: this.SUM,
+      [this.lexer.MINUS_SIGN]: this.SUM,
+      [this.lexer.SLASH]: this.PRODUCT,
+      [this.lexer.ASTERISK]: this.PRODUCT,
+      [this.lexer.LEFT_PARENT]: this.CALL
+    }
 
     // 调用两次以获取下一token
     this.nextToken()
@@ -178,10 +217,16 @@ class MonkeyCompilerParser {
       return null
     }
 
-    let leftExp=prefix(this)
-    // if(this.peekTokenIs(this.lexer.SEMICOLON)!=true&&precedence<this.peekPrecedence()){
-    //   let infix=
-    // }
+    let leftExp = prefix(this)
+    if (this.peekTokenIs(this.lexer.SEMICOLON) !== true && precedence < this.peekPrecedence()) {
+      let infix = this.infixParseFns[this.peekToken.getType()]
+      if (infix === null) {
+        return leftExp
+      }
+
+      this.nextToken()
+      leftExp = infix(this, leftExp)
+    }
 
     return leftExp
   }
@@ -290,6 +335,20 @@ class MonkeyCompilerParser {
     return new PrefixExpression(props)
   }
 
+  // 解析中序表达式
+  parseInfixExpression (caller, left) {
+    const props = {
+      leftExpression: left,
+      token: caller.curToken,
+      operator: caller.curToken.getLiteral()
+    }
+
+    let precedence = caller.curPrecedence()
+    caller.nextToken()
+    props.rightExpression = caller.parseExpression(precedence)
+    return new InfixExpression(props)
+  }
+
   createIdentifier () {
     const identProps = {
       token: this.curToken,
@@ -317,6 +376,25 @@ class MonkeyCompilerParser {
       console.log(this.peekError(tokenType))
       return false
     }
+  }
+
+  // 查找下一运算符优先级
+  peekPrecedence () {
+    const p = this.precedencesMap[this.peekToken.getType()]
+    if (p !== undefined) {
+      return p
+    }
+    return this.LOWEST
+  }
+
+  // 查找当前运算符优先级
+  curPrecedence () {
+    const p = this.precedencesMap[this.curToken.getType()]
+    if (p !== undefined) {
+      return p
+    }
+
+    return this.LOWEST
   }
 
   peekError (type) {
