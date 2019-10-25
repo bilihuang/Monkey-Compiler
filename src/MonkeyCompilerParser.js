@@ -78,6 +78,17 @@ class IntegerLiteral extends Expression {
   }
 }
 
+// 前序表达式
+class PrefixExpression extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.operator = props.operator
+    this.right = props.expression
+    this.tokenLiteral=`(${this.operator}${this.right.getLiteral()})`
+  }
+}
+
 class Program {
   constructor() {
     this.statements = []
@@ -104,7 +115,8 @@ class MonkeyCompilerParser {
     this.prefixParseFns = {
       [this.lexer.IDENTIFIER]: this.parseIdentifier,
       [this.lexer.INTEGER]: this.parseIntegerLiteral,
-      // [this.lexer.MINUS_SIGN]:this.parsePrefixExpression
+      [this.lexer.BANG_SIGN]: this.parsePrefixExpression,
+      [this.lexer.MINUS_SIGN]: this.parsePrefixExpression
     }
 
     this.LOWEST = 0
@@ -158,7 +170,7 @@ class MonkeyCompilerParser {
   }
 
   // 解析表达式
-  parseExpression () {
+  parseExpression (precedence) {
     let prefix = this.prefixParseFns[this.curToken.getType()]
     if (prefix === null) {
       console.log(`no parsing function found for token ${
@@ -166,7 +178,12 @@ class MonkeyCompilerParser {
       return null
     }
 
-    return prefix(this)
+    let leftExp=prefix(this)
+    // if(this.peekTokenIs(this.lexer.SEMICOLON)!=true&&precedence<this.peekPrecedence()){
+    //   let infix=
+    // }
+
+    return leftExp
   }
 
   // 解析标识符
@@ -247,17 +264,30 @@ class MonkeyCompilerParser {
 
   // 解析算术表达式语句
   parseExpressionStatement () {
-    let props={
-      token:this.curToken,
-      expression:this.parseExpression(this.LOWEST)
+    let props = {
+      token: this.curToken,
+      expression: this.parseExpression(this.LOWEST)
     }
 
-    const stmt=new ExpressionStatement(props)
-    if(this.peekTokenIs(this.lexer.SEMICOLON)){
+    const stmt = new ExpressionStatement(props)
+    if (this.peekTokenIs(this.lexer.SEMICOLON)) {
       this.nextToken()
     }
 
     return stmt
+  }
+
+  // 解析前序表达式
+  parsePrefixExpression (caller) {
+    let props = {
+      token: caller.curToken,
+      operator: caller.curToken.getLiteral()
+    }
+
+    caller.nextToken()
+    props.expression = caller.parseExpression(caller.PREFIX)
+
+    return new PrefixExpression(props)
   }
 
   createIdentifier () {
@@ -284,8 +314,14 @@ class MonkeyCompilerParser {
       this.nextToken()
       return true
     } else {
+      console.log(this.peekError(tokenType))
       return false
     }
+  }
+
+  peekError (type) {
+    let s = `expected next token to be ${this.lexer.getLiteralByTokenType(type)}`
+    return s
   }
 }
 
