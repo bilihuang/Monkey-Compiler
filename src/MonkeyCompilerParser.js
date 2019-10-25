@@ -101,6 +101,16 @@ class InfixExpression extends Expression {
   }
 }
 
+// 布尔值表达式
+class Boolean extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.value = props.value
+    this.tokenLiteral = `Boolean token with value of ${this.value}`
+  }
+}
+
 class Program {
   constructor() {
     this.statements = []
@@ -128,7 +138,9 @@ class MonkeyCompilerParser {
       [this.lexer.IDENTIFIER]: this.parseIdentifier,
       [this.lexer.INTEGER]: this.parseIntegerLiteral,
       [this.lexer.BANG_SIGN]: this.parsePrefixExpression,
-      [this.lexer.MINUS_SIGN]: this.parsePrefixExpression
+      [this.lexer.MINUS_SIGN]: this.parsePrefixExpression,
+      [this.lexer.TRUE]: this.parseBoolean,
+      [this.lexer.FALSE]: this.parseBoolean
     }
 
     // 中序表达式解析方法
@@ -347,6 +359,15 @@ class MonkeyCompilerParser {
     caller.nextToken()
     props.rightExpression = caller.parseExpression(precedence)
     return new InfixExpression(props)
+  }
+
+  // 解析布尔值
+  parseBoolean (caller) {
+    const props = {
+      token: caller.curToken,
+      value: caller.curTokenIs(caller.lexer.TRUE)
+    }
+    return new Boolean(props)
   }
 
   createIdentifier () {
