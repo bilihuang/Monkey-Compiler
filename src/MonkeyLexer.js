@@ -246,7 +246,7 @@ class MonkeyLexer {
         tok = new Token(this.LEFT_PARENT, "(", lineCount)
         break;
       case ')':
-        tok = new Token(this.RIGHT_BRACE, ")", lineCount)
+        tok = new Token(this.RIGHT_PARENT, ")", lineCount)
         break;
       case -1:
         tok = new Token(this.EOF, "", lineCount)

@@ -102,7 +102,7 @@ class InfixExpression extends Expression {
 }
 
 // 布尔值表达式
-class Boolean extends Expression {
+class BooleanLiteral extends Expression {
   constructor(props) {
     super(props)
     this.token = props.token
@@ -140,7 +140,8 @@ class MonkeyCompilerParser {
       [this.lexer.BANG_SIGN]: this.parsePrefixExpression,
       [this.lexer.MINUS_SIGN]: this.parsePrefixExpression,
       [this.lexer.TRUE]: this.parseBoolean,
-      [this.lexer.FALSE]: this.parseBoolean
+      [this.lexer.FALSE]: this.parseBoolean,
+      [this.lexer.LEFT_PARENT]: this.parseGroupedExpression
     }
 
     // 中序表达式解析方法
@@ -367,7 +368,19 @@ class MonkeyCompilerParser {
       token: caller.curToken,
       value: caller.curTokenIs(caller.lexer.TRUE)
     }
-    return new Boolean(props)
+    return new BooleanLiteral(props)
+  }
+
+  // 解析组合表达式
+  parseGroupedExpression(caller) {
+    caller.nextToken()
+    const exp = caller.parseExpression(caller.LOWEST)
+    if (caller.expectPeek(caller.lexer.RIGHT_PARENT)
+        !== true) {
+      return null
+    }
+
+    return exp
   }
 
   createIdentifier () {
