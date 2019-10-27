@@ -44,7 +44,7 @@ class LetStatement extends Statement {
     this.token = props.token
     this.name = props.identifier
     this.value = props.expression
-    this.tokenLiteral = `This is a Let statement, left is an identifier:${props.identifier.getLiteral()} right size is value of ${this.value.getLiteral()}`
+    this.tokenLiteral = `This is a Let statement, left is an identifier:${props.identifier.getLiteral()}, right side is value of ${this.value.getLiteral()}. `
   }
 }
 
@@ -111,6 +111,7 @@ class BooleanLiteral extends Expression {
   }
 }
 
+// if语句
 class IfExpression extends Expression {
   constructor(props) {
     super(props)
@@ -122,7 +123,7 @@ class IfExpression extends Expression {
   }
 }
 
-// 解析if和else中的代码块
+// 解析{}中的代码块
 class BlockStatement extends Statement {
   constructor(props) {
     super(props)
@@ -131,6 +132,40 @@ class BlockStatement extends Statement {
     let s = ""
     for (let i = 0; i < this.statements.length; i++) {
       s += this.statements[i].getLiteral()
+    }
+    this.tokenLiteral = s
+  }
+}
+
+// 函数
+class FunctionLiteral extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.parameters = props.parameters
+    this.body = props.body // 代码块内容
+    let s = 'It is a nameless function, input parameters are: ('
+    for (let i = 0, len = this.parameters.length; i < len; i++) {
+      s += this.parameters[i].getLiteral()
+      s += (i !== len - 1) ? ", " : ")\n"
+    }
+    s += `statements in function body are : {${this.body.getLiteral()}}`
+    this.tokenLiteral = s
+  }
+}
+
+// 函数调用
+class CallExpression extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.function = props.function  // 调用函数
+    this.arguments = props.arguments //调用时传入的参数
+
+    let s = `It is a function call : ${this.function.getLiteral()}\n It is input parameters are: (`
+    for (let i = 0, len = this.arguments.length; i < len; i++) {
+      s += this.arguments[i].getLiteral()
+      s += (i !== len - 1) ? ", " : ")"
     }
     this.tokenLiteral = s
   }
@@ -167,7 +202,8 @@ class MonkeyCompilerParser {
       [this.lexer.TRUE]: this.parseBoolean,
       [this.lexer.FALSE]: this.parseBoolean,
       [this.lexer.LEFT_PARENT]: this.parseGroupedExpression,
-      [this.lexer.IF]: this.parseIfExpression
+      [this.lexer.IF]: this.parseIfExpression,
+      [this.lexer.FUNCTION]: this.parseFunctionLiteral
     }
 
     // 中序表达式解析方法
@@ -179,7 +215,8 @@ class MonkeyCompilerParser {
       [this.lexer.EQ]: this.parseInfixExpression,
       [this.lexer.NOT_EQ]: this.parseInfixExpression,
       [this.lexer.LT]: this.parseInfixExpression,
-      [this.lexer.GT]: this.parseInfixExpression
+      [this.lexer.GT]: this.parseInfixExpression,
+      [this.lexer.LEFT_PARENT]: this.parseCallExpression
     }
 
     // 算术表达式优先级 6最高
@@ -278,7 +315,7 @@ class MonkeyCompilerParser {
   parseIntegerLiteral (caller) {
     const intProps = {
       token: caller.curToken,
-      value: parseInt(caller.curToken.getLiteral(),10)
+      value: parseInt(caller.curToken.getLiteral(), 10)
     }
 
     if (isNaN(intProps.value)) {
@@ -456,6 +493,102 @@ class MonkeyCompilerParser {
     return new BlockStatement(props)
   }
 
+  // 解析函数
+  parseFunctionLiteral (caller) {
+    const props = {
+      token: caller.curToken
+    }
+
+    // 无左括号则错误
+    if (caller.expectPeek(caller.lexer.LEFT_PARENT) !== true) {
+      return null
+    }
+
+    // 解析参数
+    props.parameters = caller.parseFunctionParameters(caller)
+
+    // 无左{错误
+    if (caller.expectPeek(caller.lexer.LEFT_BRACE) !== true) {
+      return null
+    }
+
+    // 函数内部代码
+    props.body = caller.parseBlockStatement(caller)
+
+    return new FunctionLiteral(props)
+  }
+
+  // 解析函数参数
+  parseFunctionParameters (caller) {
+    let parameters = []
+
+    // 是右括号则无参数
+    if (caller.peekTokenIs(caller.lexer.RIGHT_PARENT)) {
+      caller.nextToken()
+      return parameters
+    }
+
+    caller.nextToken()
+
+    const idenProp = {
+      token: caller.curToken
+    }
+    parameters.push(new Identifier(idenProp))
+
+    // 循环获取参数
+    while (caller.peekTokenIs(caller.lexer.COMMA)) {
+      caller.nextToken()
+      caller.nextToken()
+      const ident = {
+        token: caller.curToken
+      }
+      parameters.push(new Identifier(ident))
+    }
+
+    // 无右括号报错
+    if (caller.expectPeek(caller.lexer.RIGHT_PARENT) !==
+      true) {
+      return null
+    }
+
+    return parameters
+  }
+
+  // 解析函数调用
+  parseCallExpression (caller, func) {
+    const props = {
+      token: caller.curToken,
+      function: func,
+      arguments: caller.parseCallArguments(caller)
+    }
+
+    return new CallExpression(props)
+  }
+
+  // 解析函数调用参数
+  parseCallArguments (caller) {
+    const args = []
+    if (caller.peekTokenIs(caller.lexer.RIGHT_PARENT)) {
+      caller.nextToken()
+      return args
+    }
+
+    caller.nextToken()
+    // 参数可能是算术表达式
+    args.push(caller.parseExpression(caller.LOWEST))
+
+    while (caller.peekTokenIs(caller.lexer.COMMA)) {
+      caller.nextToken()
+      caller.nextToken()
+      args.push(caller.parseExpression(caller.LOWEST))
+    }
+
+    if (caller.expectPeek(caller.lexer.RIGHT_PARENT) !== true) {
+      return null
+    }
+
+    return args
+  }
 
   createIdentifier () {
     const identProps = {
