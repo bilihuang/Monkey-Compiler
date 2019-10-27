@@ -111,6 +111,31 @@ class BooleanLiteral extends Expression {
   }
 }
 
+class IfExpression extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.condition = props.condition // if条件判断的内容
+    this.consequence = props.consequence // if第一个花括号里的代码块
+    this.alternative = props.alternative // else里的内容
+    this.tokenLiteral = `if expression width condtion: ${this.condition.getLiteral()}\n statements in if block are: ${this.consequence.getLiteral()}` + (this.alternative ? `\n statements in else block are: ${this.alternative.getLiteral()}` : '')
+  }
+}
+
+// 解析if和else中的代码块
+class BlockStatement extends Statement {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.statements = props.statements
+    let s = ""
+    for (let i = 0; i < this.statements.length; i++) {
+      s += this.statements[i].getLiteral()
+    }
+    this.tokenLiteral = s
+  }
+}
+
 class Program {
   constructor() {
     this.statements = []
@@ -141,7 +166,8 @@ class MonkeyCompilerParser {
       [this.lexer.MINUS_SIGN]: this.parsePrefixExpression,
       [this.lexer.TRUE]: this.parseBoolean,
       [this.lexer.FALSE]: this.parseBoolean,
-      [this.lexer.LEFT_PARENT]: this.parseGroupedExpression
+      [this.lexer.LEFT_PARENT]: this.parseGroupedExpression,
+      [this.lexer.IF]: this.parseIfExpression
     }
 
     // 中序表达式解析方法
@@ -153,8 +179,7 @@ class MonkeyCompilerParser {
       [this.lexer.EQ]: this.parseInfixExpression,
       [this.lexer.NOT_EQ]: this.parseInfixExpression,
       [this.lexer.LT]: this.parseInfixExpression,
-      [this.lexer.GT]: this.parseInfixExpression,
-      [this.lexer.PLUS_SIGN]: this.parseInfixExpression
+      [this.lexer.GT]: this.parseInfixExpression
     }
 
     // 算术表达式优先级 6最高
@@ -224,7 +249,7 @@ class MonkeyCompilerParser {
   // 解析表达式
   parseExpression (precedence) {
     let prefix = this.prefixParseFns[this.curToken.getType()]
-    if (prefix === null) {
+    if (!prefix) {
       console.log(`no parsing function found for token ${
         this.curToken.getLiteral()}`)
       return null
@@ -253,7 +278,7 @@ class MonkeyCompilerParser {
   parseIntegerLiteral (caller) {
     const intProps = {
       token: caller.curToken,
-      value: parseInt(caller.curToken.getLiteral())
+      value: parseInt(caller.curToken.getLiteral(),10)
     }
 
     if (isNaN(intProps.value)) {
@@ -281,14 +306,11 @@ class MonkeyCompilerParser {
       return null
     }
 
-    if (!this.expectPeek(this.lexer.INTEGER)) {
-      return null
-    }
-
-    let exprProps = {
-      token: this.curToken
-    }
-    props.expression = new Expression(exprProps)
+    // let exprProps = {
+    //   token: this.curToken
+    // }
+    this.nextToken()
+    props.expression = this.parseExpression(this.LOWEST)
 
     if (!this.expectPeek(this.lexer.SEMICOLON)) {
       return null
@@ -304,14 +326,11 @@ class MonkeyCompilerParser {
       token: this.curToken
     }
 
-    if (!this.expectPeek(this.lexer.INTEGER)) {
-      return null
-    }
-
-    let exprProps = {
-      token: this.curToken
-    }
-    props.expression = new Expression(exprProps)
+    // let exprProps = {
+    //   token: this.curToken
+    // }
+    this.nextToken()
+    props.expression = this.parseExpression(this.LOWEST)
 
     if (!this.expectPeek(this.lexer.SEMICOLON)) {
       return null
@@ -372,16 +391,71 @@ class MonkeyCompilerParser {
   }
 
   // 解析组合表达式
-  parseGroupedExpression(caller) {
+  parseGroupedExpression (caller) {
     caller.nextToken()
     const exp = caller.parseExpression(caller.LOWEST)
     if (caller.expectPeek(caller.lexer.RIGHT_PARENT)
-        !== true) {
+      !== true) {
       return null
     }
 
     return exp
   }
+
+  // 解析if表达式
+  parseIfExpression (caller) {
+    const props = {
+      token: caller.curToken
+    }
+
+    if (caller.expectPeek(caller.lexer.LEFT_PARENT) !== true) {
+      return null
+    }
+
+    caller.nextToken()
+    props.condition = caller.parseExpression(caller.LOWEST)
+
+    if (caller.expectPeek(caller.lexer.RIGHT_PARENT) !== true) {
+      return null
+    }
+
+    if (caller.expectPeek(caller.lexer.LEFT_BRACE) !== true) {
+      return null
+    }
+
+    props.consequence = caller.parseBlockStatement(caller)
+
+    if (caller.peekTokenIs(caller.lexer.ELSE) === true) {
+      caller.nextToken()
+      if (caller.expectPeek(caller.lexer.LEFT_BRACE) !== true) {
+        return null
+      }
+      props.alternative = caller.parseBlockStatement(caller)
+    }
+
+    return new IfExpression(props)
+  }
+
+  // 解析if语句和else语句中代码块
+  parseBlockStatement (caller) {
+    const props = {
+      token: caller.curToken,
+      statements: []
+    }
+
+    caller.nextToken()
+
+    while (caller.curTokenIs(caller.lexer.RIGHT_BRACE) !== true) {
+      const stmt = caller.parseStatement()
+      if (stmt !== null) {
+        props.statements.push(stmt)
+      }
+
+      caller.nextToken()
+    }
+    return new BlockStatement(props)
+  }
+
 
   createIdentifier () {
     const identProps = {

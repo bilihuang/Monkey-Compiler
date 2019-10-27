@@ -43,7 +43,7 @@ class MonkeyLexer {
     this.PLUS_SIGN = 3 // +
     this.INTEGER = 4 // 整数
     this.SEMICOLON = 5 // ;
-    this.IF = 6 // if
+    this.IF = 6 // if 
     this.ELSE = 7 // else
     this.MINUS_SIGN = 8 // -
     this.BANG_SIGN = 9 // !
@@ -67,14 +67,15 @@ class MonkeyLexer {
   }
 
   initKeywords () {
-    this.keyWordMap = []
-    this.keyWordMap["let"] = new Token(this.LET, "let", 0)
-    this.keyWordMap["if"] = new Token(this.IF, "if", 0)
-    this.keyWordMap["ELSE"] = new Token(this.ELSE, "else", 0)
-    this.keyWordMap["fn"] = new Token(this.FUNCTION, "fn", 0)
-    this.keyWordMap["true"] = new Token(this.TRUE, "true", 0)
-    this.keyWordMap["false"] = new Token(this.FALSE, "false", 0)
-    this.keyWordMap["return"] = new Token(this.RETURN, "return", 0)
+    this.keyWordMap = {
+      let: new Token(this.LET, "let", 0),
+      if: new Token(this.IF, "if", 0),
+      else: new Token(this.ELSE, "else", 0),
+      fn: new Token(this.FUNCTION, "fn", 0),
+      true: new Token(this.TRUE, "true", 0),
+      false: new Token(this.FALSE, "false", 0),
+      return: new Token(this.RETURN, "return", 0)
+    }
   }
 
   // 通过token类型获取字面量
