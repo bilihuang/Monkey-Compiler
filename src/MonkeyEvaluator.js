@@ -58,6 +58,22 @@ class ReturnValues extends BaseObject {
   }
 }
 
+// 变量执行环境
+class Enviroment {
+  constructor() {
+    this.map = {}
+  }
+
+  get (name) {
+    let obj = this.map[name]
+    return obj
+  }
+
+  set (name, obj) {
+    this.map[name] = obj
+  }
+}
+
 class NullObj extends BaseObject {
   constructor(props) {
     super()
@@ -88,12 +104,28 @@ class ErrorObj extends BaseObject {
 }
 
 class MonkeyEvaluator {
+  constructor(props) {
+    this.enviroment = new Enviroment()
+  }
   // 执行函数
   evaluate (node) {
     const props = {}
     switch (node.type) {
       case "program":
         return this.evalProgram(node)
+      case "LetStatement":
+        const val = this.evaluate(node.value)
+        if (this.isError(val)) {
+          return val
+        }
+
+        this.enviroment.set(node.name.tokenLiteral, val)
+        return val
+      case "Identifier":
+        console.log("variable name is: ", node.tokenLiteral)
+        const value = this.evalIdentifier(node, this.enviroment)
+        console.log("it is binding value is ", value.inspect())
+        return value
       case "Integer":
         console.log("Integer with value:", node.value)
         props.value = node.value
@@ -314,15 +346,25 @@ class MonkeyEvaluator {
     for (let i = 0; i < node.statements.length; i++) {
       result = this.evaluate(node.statements[i])
       // 防止嵌套if不执行报错
-      if(result===null) {
+      if (result === null) {
         continue
       }
+
       if (result.type() === result.RETURN_VALUE_OBJECT || result.type() === result.ERROR_OBJ) {
         // 遇到返回语句或错误则直接终止循环并返回
         return result
       }
     }
     return result
+  }
+
+  // 执行变量
+  evalIdentifier (node, env) {
+    const val = env.get(node.tokenLiteral)
+    if (val === undefined) {
+      return this.newError(`identifier no found: ${node.name}`)
+    }
+    return val
   }
 
   // 判断条件代码的是否为真值
