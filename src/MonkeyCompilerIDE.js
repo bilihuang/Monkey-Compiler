@@ -3,6 +3,7 @@ import * as bootstrap from 'react-bootstrap'
 import MonkeyLexer from './MonkeyLexer'
 import MonkeyCompilerEditer from './MonkeyCompilerEditer'
 import MonkeyCompilerParser from './MonkeyCompilerParser'
+import MonkeyEvaluator from './MonkeyEvaluator'
 
 class MonkeyCompilerIDE extends Component {
 
@@ -10,6 +11,7 @@ class MonkeyCompilerIDE extends Component {
     super(props)
     // 先创建一个空的解释器实例以方便创建编辑器实例时将keyWords传入
     this.lexer = new MonkeyLexer("")
+    this.evaluator = new MonkeyEvaluator()
     this.onLexingClick = this.onLexingClick.bind(this)
   }
 
@@ -20,6 +22,8 @@ class MonkeyCompilerIDE extends Component {
     this.program = this.parser.program
     for (let i = 0; i < this.program.statements.length; i++) {
       console.log(this.program.statements[i].getLiteral())
+      // 执行代码
+      this.evaluator.evaluate(this.program.statements[i])
     }
   }
 

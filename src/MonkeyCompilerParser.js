@@ -10,6 +10,10 @@ class Node {
 
 // 语句类
 class Statement extends Node {
+  constructor() {
+    super()
+    this.type = "Statement"
+  }
   statementNode () {
     return this
   }
@@ -19,6 +23,7 @@ class Statement extends Node {
 class Expression extends Node {
   constructor(props) {
     super(props)
+    this.type = "Expression"
     this.tokenLiteral = props.token.getLiteral()
   }
 
@@ -34,6 +39,7 @@ class Identifier extends Statement {
     this.tokenLiteral = props.token.getLiteral()
     this.token = props.token
     this.value = ""
+    this.type = "Identifier"
   }
 }
 
@@ -44,6 +50,7 @@ class LetStatement extends Statement {
     this.token = props.token
     this.name = props.identifier
     this.value = props.expression
+    this.type = "LetStatement"
     this.tokenLiteral = `This is a Let statement, left is an identifier:${props.identifier.getLiteral()}, right side is value of ${this.value.getLiteral()}. `
   }
 }
@@ -54,6 +61,7 @@ class ReturnStatement extends Statement {
     super(props)
     this.token = props.token
     this.expression = props.expression
+    this.type = "ReturnStatement"
     this.tokenLiteral = `return with ${this.expression.getLiteral()}`
   }
 }
@@ -64,6 +72,7 @@ class ExpressionStatement extends Statement {
     super(props)
     this.token = props.token
     this.expression = props.expression
+    this.type = "ExpressionStatement"
     this.tokenLiteral = `expression: ${this.expression.getLiteral()}`
   }
 }
@@ -74,6 +83,7 @@ class IntegerLiteral extends Expression {
     super(props)
     this.token = props.token
     this.value = props.value
+    this.type = "Integer"
     this.tokenLiteral = `Integer value is: ${this.token.getLiteral()}`
   }
 }
@@ -85,6 +95,7 @@ class PrefixExpression extends Expression {
     this.token = props.token
     this.operator = props.operator
     this.right = props.expression
+    this.type = "PrefixExpression"
     this.tokenLiteral = `(${this.operator} ${this.right.getLiteral()})`
   }
 }
@@ -97,6 +108,7 @@ class InfixExpression extends Expression {
     this.left = props.leftExpression
     this.operator = props.operator
     this.right = props.rightExpression
+    this.type = "InfixExpression"
     this.tokenLiteral = `(${this.left.getLiteral()} ${this.operator} ${this.right.getLiteral()})`
   }
 }
@@ -107,6 +119,7 @@ class BooleanLiteral extends Expression {
     super(props)
     this.token = props.token
     this.value = props.value
+    this.type = "Boolean"
     this.tokenLiteral = `Boolean token with value of ${this.value}`
   }
 }
@@ -119,6 +132,7 @@ class IfExpression extends Expression {
     this.condition = props.condition // if条件判断的内容
     this.consequence = props.consequence // if第一个花括号里的代码块
     this.alternative = props.alternative // else里的内容
+    this.type = "IfExpression"
     this.tokenLiteral = `if expression width condtion: ${this.condition.getLiteral()}\n statements in if block are: ${this.consequence.getLiteral()}` + (this.alternative ? `\n statements in else block are: ${this.alternative.getLiteral()}` : '')
   }
 }
@@ -144,6 +158,7 @@ class FunctionLiteral extends Expression {
     this.token = props.token
     this.parameters = props.parameters
     this.body = props.body // 代码块内容
+    this.type = "FunctionLiteral"
     let s = 'It is a nameless function, input parameters are: ('
     for (let i = 0, len = this.parameters.length; i < len; i++) {
       s += this.parameters[i].getLiteral()
@@ -161,7 +176,7 @@ class CallExpression extends Expression {
     this.token = props.token
     this.function = props.function  // 调用函数
     this.arguments = props.arguments //调用时传入的参数
-
+    this.type = "CallExpression"
     let s = `It is a function call : ${this.function.getLiteral()}\n It is input parameters are: (`
     for (let i = 0, len = this.arguments.length; i < len; i++) {
       s += this.arguments[i].getLiteral()
