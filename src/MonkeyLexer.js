@@ -325,7 +325,7 @@ class MonkeyLexer {
     this.tokens = []
     let token = this.nextToken()
     while (token !== undefined && token.getType() !== this.EOF) {
-      console.log(token)
+      // console.log(token)
       this.tokens.push(token)
       token = this.nextToken()
     }

@@ -88,7 +88,7 @@ class MonkeyCompilerEditer extends Component {
     // }
 
     if (n.data) {
-      console.log(n.parentNode.innerHTML)
+      // console.log(n.parentNode.innerHTML)
       this.lastBegin = 0
       n.keyWordCount = 0
       n.identifierCount = 0
@@ -138,7 +138,7 @@ class MonkeyCompilerEditer extends Component {
 
     this.lastBegin = end - 1
     elementNode.keyWordCount--
-    console.log(this.divInstance.innerHTML)
+    // console.log(this.divInstance.innerHTML)
   }
 
   highLightSyntax () {

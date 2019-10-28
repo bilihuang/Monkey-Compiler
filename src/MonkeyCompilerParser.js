@@ -143,6 +143,7 @@ class BlockStatement extends Statement {
     super(props)
     this.token = props.token
     this.statements = props.statements
+    this.type="blockStatement"
     let s = ""
     for (let i = 0; i < this.statements.length; i++) {
       s += this.statements[i].getLiteral()
@@ -308,7 +309,7 @@ class MonkeyCompilerParser {
     }
 
     let leftExp = prefix(this)
-    if (this.peekTokenIs(this.lexer.SEMICOLON) !== true && precedence < this.peekPrecedence()) {
+    while (this.peekTokenIs(this.lexer.SEMICOLON) !== true && precedence < this.peekPrecedence()) {
       let infix = this.infixParseFns[this.peekToken.getType()]
       if (infix === null) {
         return leftExp
