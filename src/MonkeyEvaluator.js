@@ -5,6 +5,8 @@ class BaseObject {
     this.NULL_OBJ = "NULL"
     this.ERROR_OBJ = "Error"
     this.RETURN_VALUE_OBJECT = "Return"
+    this.FUNCTION_LITERAL = "FunctionLiteral"
+    this.FUNCTION_CALL = "FunctionCall"
   }
 
   type () { return null }
@@ -42,38 +44,6 @@ class BooleanObj extends BaseObject {
   }
 }
 
-class ReturnValues extends BaseObject {
-  constructor(props) {
-    super(props)
-    this.valueObject = props.value
-  }
-
-  type () {
-    return this.RETURN_VALUE_OBJECT
-  }
-
-  inspect () {
-    this.msg = `return with : ${this.valueObject.inspect()}`
-    return this.msg
-  }
-}
-
-// 变量执行环境
-class Enviroment {
-  constructor() {
-    this.map = {}
-  }
-
-  get (name) {
-    let obj = this.map[name]
-    return obj
-  }
-
-  set (name, obj) {
-    this.map[name] = obj
-  }
-}
-
 class NullObj extends BaseObject {
   constructor(props) {
     super()
@@ -103,6 +73,80 @@ class ErrorObj extends BaseObject {
   }
 }
 
+class ReturnValues extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.valueObject = props.value
+  }
+
+  type () {
+    return this.RETURN_VALUE_OBJECT
+  }
+
+  inspect () {
+    this.msg = `return with : ${this.valueObject.inspect()}`
+    return this.msg
+  }
+}
+
+// 函数符号对象
+class FunctionLiteral extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.token = props.token  // 对应关键字fn
+    this.parameters = props.identifiers
+    this.blockStatement = props.blockStatement
+  }
+
+  type () {
+    return this.FUNCTION_LITERAL
+  }
+
+  inspect () {
+    let s = "fn("
+    for (let i = 0, len = this.parameters.length; i < len; i++) {
+      s += this.parameters[i].tokenLiteral
+      s += (i < len - 1) ? ',' : `){\n${this.blockStatement.tokenLiteral}\n}`
+    }
+    return s
+  }
+}
+
+// 函数执行时对象
+class FunctionCall extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.identifiers = props.identifiers
+    this.blockStatement = props.blockStatement
+    this.enviroment = undefined // 执行时环境
+  }
+}
+
+// 变量执行环境
+class Enviroment {
+  constructor() {
+    this.map = {}
+    this.outer = undefined  // 外部环境
+  }
+
+  get (name) {
+    let obj = this.map[name]
+    if (obj !== undefined) {
+      return obj
+    }
+    //在当前绑定环境找不到变量时，通过回溯查找外层绑定环境是否有给定变量
+    if (this.outer !== undefined) {
+      obj = this.outer.get(name)
+    }
+
+    return obj
+  }
+
+  set (name, obj) {
+    this.map[name] = obj
+  }
+}
+
 class MonkeyEvaluator {
   constructor(props) {
     this.enviroment = new Enviroment()
@@ -118,9 +162,56 @@ class MonkeyEvaluator {
         if (this.isError(val)) {
           return val
         }
-
         this.enviroment.set(node.name.tokenLiteral, val)
         return val
+      case "FunctionLiteral":
+        props.token = node.token
+        props.identifiers = node.parameters
+        props.blockStatement = node.body
+        // 返回函数调用对象以供调用
+        return new FunctionCall(props)
+      case "CallExpression":
+        console.log("execute a function with content: ",
+          node.function.tokenLiteral)
+        const functionCall = this.evaluate(node.function)
+        if (this.isError(functionCall)) {
+          return functionCall
+        }
+
+        console.log("evalute function call params:")
+        const args = this.evalExpressions(node.arguments)
+        if (args.length === 1 && this.isError(args[0])) {
+          return args[0]
+        }
+
+        // 打印处理后的参数
+        for (var i = 0; i < args.length; i++) {
+          console.log(args[i].inspect())
+        }
+
+        // 执行函数前保留当前绑定环境
+        const oldEnviroment = this.enviroment
+        //为函数调用创建新的绑定环境
+        functionCall.enviroment = this.newEnclosedEnvironment(oldEnviroment)
+        //设置新的变量绑定环境
+        this.enviroment = functionCall.enviroment
+        //将输入参数名称与传入值在新环境中绑定
+        for (let i = 0; i < functionCall.identifiers.length; i++) {
+          const name = functionCall.identifiers[i].tokenLiteral
+          const val = args[i]
+          this.enviroment.set(name, val)
+        }
+        //执行函数体内代码
+        const result = this.evaluate(functionCall.blockStatement)
+        //执行完函数后，里面恢复原有绑定环境
+        this.enviroment = oldEnviroment
+        if (result.type() === result.RETURN_VALUE_OBJECT) {
+          console.log("function call return with :",
+            result.valueObject.inspect())
+          return result.valueObject
+        }
+
+        return result
       case "Identifier":
         console.log("variable name is: ", node.tokenLiteral)
         const value = this.evalIdentifier(node, this.enviroment)
@@ -186,6 +277,19 @@ class MonkeyEvaluator {
       }
     }
 
+    return result
+  }
+
+  // 执行参数中的表达式
+  evalExpressions (exps) {
+    const result = []
+    for (let i = 0; i < exps.length; i++) {
+      const evaluated = this.evaluate(exps[i])
+      if (this.isError(evaluated)) {
+        return evaluated
+      }
+      result[i] = evaluated
+    }
     return result
   }
 
@@ -365,6 +469,13 @@ class MonkeyEvaluator {
       return this.newError(`identifier no found: ${node.name}`)
     }
     return val
+  }
+
+  // 创建新环境并绑定外层环境
+  newEnclosedEnvironment(outerEnv){
+    const env=new Enviroment()
+    env.outer=outerEnv
+    return env
   }
 
   // 判断条件代码的是否为真值
