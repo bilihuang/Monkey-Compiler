@@ -42,6 +42,22 @@ class BooleanObj extends BaseObject {
   }
 }
 
+class ReturnValues extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.valueObject = props.value
+  }
+
+  type () {
+    return this.RETURN_VALUE_OBJECT
+  }
+
+  inspect () {
+    this.msg = `return with : ${this.valueObject.inspect()}`
+    return this.msg
+  }
+}
+
 class NullObj extends BaseObject {
   constructor(props) {
     super()
@@ -76,6 +92,8 @@ class MonkeyEvaluator {
   evaluate (node) {
     const props = {}
     switch (node.type) {
+      case "program":
+        return this.evalProgram(node)
       case "Integer":
         console.log("Integer with value:", node.value)
         props.value = node.value
@@ -102,9 +120,41 @@ class MonkeyEvaluator {
         return this.evalIfExpression(node)
       case "blockStatement":
         return this.evalStatements(node)
+      case "ReturnStatement":
+        props.value = this.evaluate(node.expression)
+        if (this.isError(props.value)) {
+          return props.value
+        }
+        const ReturnObj = new ReturnValues(props)
+        console.log(ReturnObj.inspect())
+        return ReturnObj
       default:
         return new NullObj({})
     }
+  }
+
+  // 程序执行的主入口，解决代码嵌套执行问题
+  evalProgram (program) {
+    let result
+    for (let i = 0; i < program.statements.length; i++) {
+      result = this.evaluate(program.statements[i])
+
+      // 为return值则直接返回
+      if (result.type() === result.RETURN_VALUE_OBJECT) {
+        return result.valueObject
+      }
+
+      if (result.type() === result.NULL_OBJ) {
+        return result
+      }
+
+      if (result.type() === result.ERROR_OBJ) {
+        console.log(result.msg)
+        return result
+      }
+    }
+
+    return result
   }
 
   // 执行前序表达式
@@ -154,13 +204,30 @@ class MonkeyEvaluator {
 
   // 执行中序表达式
   evalInfixExpression (operator, left, right) {
+
+    // 左右类型不匹配则报错
+    if (left.type() !== right.type()) {
+      return this.newError(`type mismatch: ${left.type()} and ${right.type()}`)
+    }
+
     if (left.type() === left.INTEGER_OBJ &&
       right.type() === right.INTEGER_OBJ) {
       return this.evalIntegerInfixExpression(
         operator, left, right)
     }
 
-    return null
+    const props = {}
+    if (operator === '==') {
+      props.value = (left.vaule === right.value)
+      console.log("result on boolean operation of ", operator, " is ", props.value)
+      return new BooleanObj(props)
+    } else if (operator === "!=") {
+      props.value = (left.value !== right.value)
+      console.log("result on boolean operation of ", operator, " is ", props.value)
+      return new BooleanObj(props)
+    }
+
+    return this.newError("unknown operator: " + operator)
   }
 
   // 执行中序表达式中的运算
@@ -200,7 +267,7 @@ class MonkeyEvaluator {
         props.value = (leftVal < rightVal)
         break
       default:
-        return null
+        return this.newError("unknown operator for Integer")
     }
 
     console.log("eval infix expression result is: ",
@@ -221,11 +288,16 @@ class MonkeyEvaluator {
     // 执行条件代码
     const condition = this.evaluate(ifNode.condition)
 
+    // 有错误则终止
+    if (this.isError(condition)) {
+      return condition
+    }
+
     if (this.isTruthy(condition)) {
       console.log("condition in if holds, exec statements in if block")
       // 为真则执行if代码
       return this.evaluate(ifNode.consequence)
-    } else if (ifNode.alternative !== null) {
+    } else if (ifNode.alternative != null) {
       console.log("condition in if no holds, exec statements in else block")
       // 为假则执行else代码
       return this.evaluate(ifNode.alternative)
@@ -238,9 +310,13 @@ class MonkeyEvaluator {
 
   // 执行代码块中语句
   evalStatements (node) {
-    let result = null
+    let result
     for (let i = 0; i < node.statements.length; i++) {
       result = this.evaluate(node.statements[i])
+      // 防止嵌套if不执行报错
+      if(result===null) {
+        continue
+      }
       if (result.type() === result.RETURN_VALUE_OBJECT || result.type() === result.ERROR_OBJ) {
         // 遇到返回语句或错误则直接终止循环并返回
         return result
@@ -272,9 +348,10 @@ class MonkeyEvaluator {
     return true
   }
 
-  newError (msg, type) {
-    const props = {}
-    props.errMsg = msg + type
+  newError (msg) {
+    const props = {
+      errMsg: msg
+    }
     return new ErrorObj(props)
   }
 

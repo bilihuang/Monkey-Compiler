@@ -143,7 +143,7 @@ class BlockStatement extends Statement {
     super(props)
     this.token = props.token
     this.statements = props.statements
-    this.type="blockStatement"
+    this.type = "blockStatement"
     let s = ""
     for (let i = 0; i < this.statements.length; i++) {
       s += this.statements[i].getLiteral()
@@ -190,6 +190,7 @@ class CallExpression extends Expression {
 class Program {
   constructor() {
     this.statements = []
+    this.type = "program"
   }
 
   getLiteral () {

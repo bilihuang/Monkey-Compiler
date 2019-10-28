@@ -20,11 +20,12 @@ class MonkeyCompilerIDE extends Component {
     this.parser = new MonkeyCompilerParser(this.lexer)
     this.parser.parseProgram()
     this.program = this.parser.program
-    for (let i = 0; i < this.program.statements.length; i++) {
-      console.log(this.program.statements[i].getLiteral())
-      // 执行代码
-      this.evaluator.evaluate(this.program.statements[i])
-    }
+    // for (let i = 0; i < this.program.statements.length; i++) {
+    //   console.log(this.program.statements[i].getLiteral())
+    //   // 执行代码
+    //   this.evaluator.evaluate(this.program.statements[i])
+    // }
+    this.evaluator.evaluate(this.program)
   }
 
   render () {
