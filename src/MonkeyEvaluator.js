@@ -169,7 +169,10 @@ class MonkeyEvaluator {
         props.identifiers = node.parameters
         props.blockStatement = node.body
         // 返回函数调用对象以供调用
-        return new FunctionCall(props)
+        const funObj = new FunctionCall(props)
+        //为函数调用创建新的绑定环境
+        funObj.enviroment = this.newEnclosedEnvironment(this.enviroment)
+        return funObj
       case "CallExpression":
         console.log("execute a function with content: ",
           node.function.tokenLiteral)
@@ -191,8 +194,7 @@ class MonkeyEvaluator {
 
         // 执行函数前保留当前绑定环境
         const oldEnviroment = this.enviroment
-        //为函数调用创建新的绑定环境
-        functionCall.enviroment = this.newEnclosedEnvironment(oldEnviroment)
+
         //设置新的变量绑定环境
         this.enviroment = functionCall.enviroment
         //将输入参数名称与传入值在新环境中绑定
@@ -472,9 +474,9 @@ class MonkeyEvaluator {
   }
 
   // 创建新环境并绑定外层环境
-  newEnclosedEnvironment(outerEnv){
-    const env=new Enviroment()
-    env.outer=outerEnv
+  newEnclosedEnvironment (outerEnv) {
+    const env = new Enviroment()
+    env.outer = outerEnv
     return env
   }
 
