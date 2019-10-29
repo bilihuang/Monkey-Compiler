@@ -590,6 +590,47 @@ class MonkeyEvaluator {
   builtins (name, args) {
     const props = {}
     switch (name) {
+      case "first":
+        if (args.length !== 1) {
+          return this.newError("Wrong number of arguments when calling first")
+        }
+        if (args[0].type() !== args[0].ARRAY_OBJ) {
+          return this.newError("arguments of first must be ARRAY")
+        }
+        if (args[0].elements.length > 0) {
+          console.log("the first element of array is :",
+            args[0].elements[0].inspect())
+          return args[0].elements[0]
+        }
+        return null
+      case "rest":
+        if (args.length !== 1) {
+          return this.newError("Wrong number of arguments when calling rest")
+        }
+        if (args[0].type() !== args[0].ARRAY_OBJ) {
+          return this.newError("arguments of first must be ARRAY")
+        }
+        if (args[0].elements.length > 1) {
+          //去掉第一个元素
+          props.elements = args[0].elements.slice(1)
+          const obj = new ArrayObj(props)
+          console.log("rest return: ", obj.inspect())
+          return obj
+        }
+        return null
+      case "append":
+        if (args.length !== 2) {
+          return this.newError("Wrong number of arguments when calling append")
+        }
+        if (args[0].type() !== args[0].ARRAY_OBJ) {
+          return this.newError("arguments of first must be ARRAY")
+        }
+        props.elements = args[0].elements.slice()
+        props.elements.push(args[1])
+        const obj = new ArrayObj(props)
+        console.log("new array after calling append is: ",
+          obj.inspect())
+        return obj
       case "len":
         if (args.length !== 1) {
           // 参数个数为1
