@@ -135,6 +135,34 @@ class StringLiteral extends Node {
   }
 }
 
+// 数组
+class ArrayLiteral extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.elements = props.elements  // 数组元素列表
+    this.type = "ArrayLiteral"
+    let s = ""
+    for (let i = 0, len = this.elements.length; i < len; i++) {
+      s += this.elements[i].getLiteral()
+      s += (i !== len - 1) ? ", " : ""
+    }
+    this.tokenLiteral = s
+  }
+}
+
+// 数组下标运算表达式
+class IndexExpression extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.left = props.left  // [前的表达式，可以是变量名，数组，函数调用
+    this.index = props.index //可以是数字常量，变量，函数调用 
+    this.tokenLiteral = `([${this.left.getLiteral()}][${this.index.getLiteral()}])`
+    this.type = "IndexExpression"
+  }
+}
+
 // if语句
 class IfExpression extends Expression {
   constructor(props) {
@@ -232,7 +260,8 @@ class MonkeyCompilerParser {
       [this.lexer.LEFT_PARENT]: this.parseGroupedExpression,
       [this.lexer.IF]: this.parseIfExpression,
       [this.lexer.FUNCTION]: this.parseFunctionLiteral,
-      [this.lexer.STRING]: this.parseStringLiteral
+      [this.lexer.STRING]: this.parseStringLiteral,
+      [this.lexer.LEFT_BRACKET]: this.parseArrayLiteral
     }
 
     // 中序表达式解析方法
@@ -245,7 +274,8 @@ class MonkeyCompilerParser {
       [this.lexer.NOT_EQ]: this.parseInfixExpression,
       [this.lexer.LT]: this.parseInfixExpression,
       [this.lexer.GT]: this.parseInfixExpression,
-      [this.lexer.LEFT_PARENT]: this.parseCallExpression
+      [this.lexer.LEFT_PARENT]: this.parseCallExpression,
+      [this.lexer.LEFT_BRACKET]: this.parseIndexExpression
     }
 
     // 算术表达式优先级 6最高
@@ -256,6 +286,7 @@ class MonkeyCompilerParser {
     this.PRODUCT = 4
     this.PREFIX = 5 //-X or !X
     this.CALL = 6  //myFunction(X)
+    this.INDEX = 7 //数组下标运算优先级最高
 
     // 存储运算符优先级
     this.precedencesMap = {
@@ -267,7 +298,8 @@ class MonkeyCompilerParser {
       [this.lexer.MINUS_SIGN]: this.SUM,
       [this.lexer.SLASH]: this.PRODUCT,
       [this.lexer.ASTERISK]: this.PRODUCT,
-      [this.lexer.LEFT_PARENT]: this.CALL
+      [this.lexer.LEFT_PARENT]: this.CALL,
+      [this.lexer.LEFT_BRACKET]: this.INDEX
     }
 
     // 调用两次以获取下一token
@@ -625,6 +657,58 @@ class MonkeyCompilerParser {
     }
 
     return args
+  }
+
+  // 解析数组
+  parseArrayLiteral (caller) {
+    const props = {
+      token: caller.curToken,
+      elements: caller.parseExpressionList(caller.lexer.RIGHT_BRACKET)
+    }
+    const obj = new ArrayLiteral(props)
+    console.log("parsing array result: ", obj.getLiteral())
+    return obj
+  }
+
+  // 解析数组中的每个元素
+  parseExpressionList (end) {
+    const list = []
+    if (this.peekTokenIs(end)) {
+      this.nextToken()
+      return list
+    }
+
+    this.nextToken()
+    list.push(this.parseExpression(this.LOWEST))
+
+    while (this.peekTokenIs(this.lexer.COMMA)) {
+      this.nextToken()  // 越过,
+      this.nextToken()
+      list.push(this.parseExpression(this.LOWEST))
+    }
+
+    if (!this.expectPeek(end)) {
+      return null
+    }
+
+    return list
+  }
+
+  // 解析数组下标运算表达式
+  parseIndexExpression (caller, left) {
+    const props = {
+      token: caller.curToken,
+      left: left
+    }
+    caller.nextToken()
+    props.index = caller.parseExpression(caller.LOWEST)
+    if (!caller.expectPeek(caller.lexer.RIGHT_BRACKET)) {
+      return null
+    }
+
+    const obj = new IndexExpression(props)
+    console.log("array indexing: ", obj.getLiteral())
+    return obj
   }
 
   createIdentifier () {

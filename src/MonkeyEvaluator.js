@@ -8,6 +8,7 @@ class BaseObject {
     this.FUNCTION_LITERAL = "FunctionLiteral"
     this.FUNCTION_CALL = "FunctionCall"
     this.STRING_OBJ = "String"
+    this.ARRAY_OBJ = "Array"
   }
 
   type () { return null }
@@ -57,6 +58,26 @@ class StringObj extends BaseObject {
 
   inspect () {
     return `content of string is: ${this.value}`
+  }
+}
+
+class ArrayObj extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.elements = props.elements
+  }
+
+  type () {
+    return this.ARRAY_OBJ
+  }
+
+  inspect () {
+    let s = "["
+    for (let i = 0, len = this.elements.length; i < len; i++) {
+      s += this.elements[i].inspect()
+      s += (i < len - 1) ? "," : "]"
+    }
+    return s
   }
 }
 
@@ -178,6 +199,52 @@ class MonkeyEvaluator {
         const str = new StringObj(props)
         console.log(str.inspect())
         return str
+      case "ArrayLiteral":
+        const elements = this.evalExpressions(node.elements)
+        if (elements.length === 1 && this.isError(elements[0])) {
+          return elements[0]
+        }
+        props.elements = elements
+        return new ArrayObj(props)
+      case "Identifier":
+        console.log("variable name is: ", node.tokenLiteral)
+        const value = this.evalIdentifier(node, this.enviroment)
+        console.log("it is binding value is ", value.inspect())
+        return value
+      case "Integer":
+        console.log("Integer with value:", node.value)
+        props.value = node.value
+        return new IntegerObj(props)
+      case "Boolean":
+        props.value = node.value
+        console.log("Boolean with value:", node.value)
+        return new BooleanObj(props)
+      case "ExpressionStatement":
+        return this.evaluate(node.expression)
+      case "PrefixExpression":
+        const right = this.evaluate(node.right)
+        if (this.isError(right)) {
+          return right
+        }
+        const obj = this.evalPrefixExpression(node.operator, right)
+        console.log("eval prefix expression: ", obj.inspect())
+        return obj
+      case "InfixExpression":
+        const infixLeft = this.evaluate(node.left)
+        const infixRight = this.evaluate(node.right)
+        return this.evalInfixExpression(node.operator, infixLeft, infixRight)
+      case "IfExpression":
+        return this.evalIfExpression(node)
+      case "blockStatement":
+        return this.evalStatements(node)
+      case "ReturnStatement":
+        props.value = this.evaluate(node.expression)
+        if (this.isError(props.value)) {
+          return props.value
+        }
+        const ReturnObj = new ReturnValues(props)
+        console.log(ReturnObj.inspect())
+        return ReturnObj
       case "LetStatement":
         const val = this.evaluate(node.value)
         if (this.isError(val)) {
@@ -185,6 +252,21 @@ class MonkeyEvaluator {
         }
         this.enviroment.set(node.name.tokenLiteral, val)
         return val
+      case "IndexExpression":
+        const left = this.evaluate(node.left)
+        if (this.isError(left)) {
+          return left
+        }
+        const index = this.evaluate(node.index)
+        if (this.isError(index)) {
+          return index
+        }
+
+        const IndexObj = this.evalIndexExpression(left, index)
+        if (IndexObj !== null) {
+          console.log("the ", index.value, " element of array is: ", IndexObj.inspect())
+        }
+        return IndexObj
       case "FunctionLiteral":
         props.token = node.token
         props.identifiers = node.parameters
@@ -238,45 +320,6 @@ class MonkeyEvaluator {
         }
 
         return result
-      case "Identifier":
-        console.log("variable name is: ", node.tokenLiteral)
-        const value = this.evalIdentifier(node, this.enviroment)
-        console.log("it is binding value is ", value.inspect())
-        return value
-      case "Integer":
-        console.log("Integer with value:", node.value)
-        props.value = node.value
-        return new IntegerObj(props)
-      case "Boolean":
-        props.value = node.value
-        console.log("Boolean with value:", node.value)
-        return new BooleanObj(props)
-      case "ExpressionStatement":
-        return this.evaluate(node.expression)
-      case "PrefixExpression":
-        const right = this.evaluate(node.right)
-        if (this.isError(right)) {
-          return right
-        }
-        const obj = this.evalPrefixExpression(node.operator, right)
-        console.log("eval prefix expression: ", obj.inspect())
-        return obj
-      case "InfixExpression":
-        const infixLeft = this.evaluate(node.left)
-        const infixRight = this.evaluate(node.right)
-        return this.evalInfixExpression(node.operator, infixLeft, infixRight)
-      case "IfExpression":
-        return this.evalIfExpression(node)
-      case "blockStatement":
-        return this.evalStatements(node)
-      case "ReturnStatement":
-        props.value = this.evaluate(node.expression)
-        if (this.isError(props.value)) {
-          return props.value
-        }
-        const ReturnObj = new ReturnValues(props)
-        console.log(ReturnObj.inspect())
-        return ReturnObj
       default:
         return new NullObj({})
     }
@@ -518,8 +561,34 @@ class MonkeyEvaluator {
     return val
   }
 
+  // 执行数组下标运算
+  evalIndexExpression (left, index) {
+    if (left.type() === left.ARRAY_OBJ &&
+      index.type() === index.INTEGER_OBJ) {
+      return this.evalArrayIndexExpression(left, index)
+    } else if (left.type() !== left.ARRAY_OBJ) {
+      return this.isError("no Array")
+    } else if (index.type() !== index.INTEGER_OBJ) {
+      return this.isError("the index is not integer")
+    } else {
+      return this.newError("unknow error")
+    }
+  }
+
+  evalArrayIndexExpression (array, index) {
+    const idx = index.value
+    const max = array.elements.length - 1
+    // 数组越界
+    if (idx < 0 || idx > max) {
+      return null
+    }
+
+    return array.elements[idx]
+  }
+
   // 内部API
   builtins (name, args) {
+    const props = {}
     switch (name) {
       case "len":
         if (args.length !== 1) {
@@ -528,17 +597,19 @@ class MonkeyEvaluator {
         }
         switch (args[0].type()) {
           case args[0].STRING_OBJ:
-            const props = {
-              value: args[0].value.length
-            }
+            props.value = args[0].value.length
             const obj = new IntegerObj(props)
             console.log("API len return: ", obj.inspect())
             return obj
+          case args[0].ARRAY_OBJ:
+            props.value = args[0].elements.length
+            console.log("len of array ", args[0].inspect(), " is ", props.value)
+            return new IntegerObj(props)
           default:
             return this.newError("unknown parameter")
         }
       default:
-          return this.newError("unknown function call")
+        return this.newError("unknown function call")
     }
   }
 

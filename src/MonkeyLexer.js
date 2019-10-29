@@ -65,6 +65,8 @@ class MonkeyLexer {
     this.LEFT_PARENT = 23 // (
     this.RIGHT_PARENT = 24 // )
     this.STRING = 25 // 字符串
+    this.LEFT_BRACKET = 26 // [
+    this.RIGHT_BRACKET = 27 // ]
   }
 
   initKeywords () {
@@ -94,6 +96,8 @@ class MonkeyLexer {
         return "plus sign"
       case this.INTEGER:
         return "integer"
+      case this.STRING:
+        return "string"
       case this.SEMICOLON:
         return "semicolon"
       case this.IF:
@@ -134,6 +138,10 @@ class MonkeyLexer {
         return "("
       case this.RIGHT_PARENT:
         return ")"
+      case this.LEFT_BRACKET:
+        return "["
+      case this.RIGHT_BRACKET:
+        return "]"
       default:
         return "unknow token"
     }
@@ -262,19 +270,25 @@ class MonkeyLexer {
         break
       case ',':
         tok = new Token(this.COMMA, ",", lineCount)
-        break;
+        break
       case '{':
         tok = new Token(this.LEFT_BRACE, "{", lineCount)
-        break;
+        break
       case '}':
         tok = new Token(this.RIGHT_BRACE, "}", lineCount)
         break;
       case '(':
         tok = new Token(this.LEFT_PARENT, "(", lineCount)
-        break;
+        break
       case ')':
         tok = new Token(this.RIGHT_PARENT, ")", lineCount)
         break;
+      case '[':
+        tok = new Token(this.LEFT_BRACKET, "[", lineCount)
+        break
+      case ']':
+        tok = new Token(this.RIGHT_BRACKET, "]", lineCount)
+        break
       case -1:
         tok = new Token(this.EOF, "", lineCount)
         break
