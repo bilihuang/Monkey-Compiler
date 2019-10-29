@@ -64,6 +64,7 @@ class MonkeyLexer {
     this.NOT_EQ = 22 // !=
     this.LEFT_PARENT = 23 // (
     this.RIGHT_PARENT = 24 // )
+    this.STRING = 25 // 字符串
   }
 
   initKeywords () {
@@ -160,6 +161,23 @@ class MonkeyLexer {
     }
   }
 
+  // 读取字符串
+  readString () {
+    // 越过开始的双引号
+    this.readChar()
+    let str = ''
+    while (this.ch !== '"' && this.ch !== this.EOF) {
+      str += this.ch
+      this.readChar()
+    }
+
+    if (this.ch !== '"') {
+      return undefined
+    }
+
+    return str
+  }
+
   // 读取字符，每次读取一个
   readChar () {
     if (this.readPosition >= this.sourceCode.length) {
@@ -197,6 +215,14 @@ class MonkeyLexer {
     this.position = this.readPosition
 
     switch (this.ch) {
+      case '"':
+        const str = this.readString()
+        if (str === undefined) {
+          tok = new Token(this.ILLEGAL, undefined, lineCount)
+        } else {
+          tok = new Token(this.STRING, str, lineCount)
+        }
+        break
       case '=':
         if (this.peekChar() === '=') {
           this.readChar()

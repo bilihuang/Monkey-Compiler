@@ -1,6 +1,7 @@
 class Node {
   constructor() {
     this.tokenLiteral = ""
+    this.type = ""
   }
 
   getLiteral () {
@@ -124,6 +125,16 @@ class BooleanLiteral extends Expression {
   }
 }
 
+// 字符串
+class StringLiteral extends Node {
+  constructor(props) {
+    super(props)
+    this.token = props.token
+    this.tokenLiteral = props.token.getLiteral()
+    this.type = "String"
+  }
+}
+
 // if语句
 class IfExpression extends Expression {
   constructor(props) {
@@ -220,7 +231,8 @@ class MonkeyCompilerParser {
       [this.lexer.FALSE]: this.parseBoolean,
       [this.lexer.LEFT_PARENT]: this.parseGroupedExpression,
       [this.lexer.IF]: this.parseIfExpression,
-      [this.lexer.FUNCTION]: this.parseFunctionLiteral
+      [this.lexer.FUNCTION]: this.parseFunctionLiteral,
+      [this.lexer.STRING]: this.parseStringLiteral
     }
 
     // 中序表达式解析方法
@@ -442,6 +454,14 @@ class MonkeyCompilerParser {
       value: caller.curTokenIs(caller.lexer.TRUE)
     }
     return new BooleanLiteral(props)
+  }
+
+  // 解析字符串
+  parseStringLiteral (caller) {
+    const props = {
+      token: caller.curToken
+    }
+    return new StringLiteral(props)
   }
 
   // 解析组合表达式

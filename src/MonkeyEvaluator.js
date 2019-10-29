@@ -7,6 +7,7 @@ class BaseObject {
     this.RETURN_VALUE_OBJECT = "Return"
     this.FUNCTION_LITERAL = "FunctionLiteral"
     this.FUNCTION_CALL = "FunctionCall"
+    this.STRING_OBJ = "String"
   }
 
   type () { return null }
@@ -41,6 +42,21 @@ class BooleanObj extends BaseObject {
 
   inspect () {
     return `boolean with value: ${this.value}`
+  }
+}
+
+class StringObj extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.value = props.value
+  }
+
+  type () {
+    return this.STRING_OBJ
+  }
+
+  inspect () {
+    return `content of string is: ${this.value}`
   }
 }
 
@@ -157,6 +173,11 @@ class MonkeyEvaluator {
     switch (node.type) {
       case "program":
         return this.evalProgram(node)
+      case "String":
+        props.value = node.tokenLiteral
+        const str= new StringObj(props)
+        console.log(str.inspect())
+        return str
       case "LetStatement":
         const val = this.evaluate(node.value)
         if (this.isError(val)) {
@@ -354,6 +375,12 @@ class MonkeyEvaluator {
         operator, left, right)
     }
 
+    // 增加字符串相加操作
+    if (left.type() === left.STRING_OBJ && right.type() === right.STRING_OBJ) {
+      return this.evalStringInfixExpression(operator,
+        left, right)
+    }
+
     const props = {}
     if (operator === '==') {
       props.value = (left.vaule === right.value)
@@ -366,6 +393,21 @@ class MonkeyEvaluator {
     }
 
     return this.newError("unknown operator: " + operator)
+  }
+
+  // 执行字符串相加
+  evalStringInfixExpression (operaotr, left, right) {
+    if (operaotr !== "+") {
+      return this.newError("unknown operator for string operation")
+    }
+
+    const leftVal = left.value,
+      rightVal = right.value
+    const props = {
+      value: leftVal + rightVal
+    }
+    console.log("reuslt of string add is: ", props.value)
+    return new StringObj(props)
   }
 
   // 执行中序表达式中的运算
