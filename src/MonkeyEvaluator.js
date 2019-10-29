@@ -175,7 +175,7 @@ class MonkeyEvaluator {
         return this.evalProgram(node)
       case "String":
         props.value = node.tokenLiteral
-        const str= new StringObj(props)
+        const str = new StringObj(props)
         console.log(str.inspect())
         return str
       case "LetStatement":
@@ -197,15 +197,18 @@ class MonkeyEvaluator {
       case "CallExpression":
         console.log("execute a function with content: ",
           node.function.tokenLiteral)
-        const functionCall = this.evaluate(node.function)
-        if (this.isError(functionCall)) {
-          return functionCall
-        }
 
+        // 把参数解析提前，以便len函数解析
         console.log("evalute function call params:")
         const args = this.evalExpressions(node.arguments)
         if (args.length === 1 && this.isError(args[0])) {
           return args[0]
+        }
+
+        const functionCall = this.evaluate(node.function)
+        if (this.isError(functionCall)) {
+          // 找不到该函数则到内部函数中找
+          return this.builtins(node.function.tokenLiteral, args)
         }
 
         // 打印处理后的参数
@@ -513,6 +516,30 @@ class MonkeyEvaluator {
       return this.newError(`identifier no found: ${node.name}`)
     }
     return val
+  }
+
+  // 内部API
+  builtins (name, args) {
+    switch (name) {
+      case "len":
+        if (args.length !== 1) {
+          // 参数个数为1
+          return this.newError("Wrong number of arguments when calling len")
+        }
+        switch (args[0].type()) {
+          case args[0].STRING_OBJ:
+            const props = {
+              value: args[0].value.length
+            }
+            const obj = new IntegerObj(props)
+            console.log("API len return: ", obj.inspect())
+            return obj
+          default:
+            return this.newError("unknown parameter")
+        }
+      default:
+          return this.newError("unknown function call")
+    }
   }
 
   // 创建新环境并绑定外层环境
