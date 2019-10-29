@@ -9,6 +9,7 @@ class BaseObject {
     this.FUNCTION_CALL = "FunctionCall"
     this.STRING_OBJ = "String"
     this.ARRAY_OBJ = "Array"
+    this.HASH_OBJ = "Hash"
   }
 
   type () { return null }
@@ -76,6 +77,28 @@ class ArrayObj extends BaseObject {
     for (let i = 0, len = this.elements.length; i < len; i++) {
       s += this.elements[i].inspect()
       s += (i < len - 1) ? "," : "]"
+    }
+    return s
+  }
+}
+
+// 哈希对象
+class Hash extends BaseObject {
+  constructor(props) {
+    super(props)
+    this.keys = props.keys
+    this.values = props.values
+  }
+
+  type () {
+    return this.HASH_OBJ
+  }
+
+  inspect () {
+    let s = "{"
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      s += `${this.keys[i].inspect()}:${this.values[i].inspect()}`
+      s += (i < len - 1) ? "," : "}"
     }
     return s
   }
@@ -219,6 +242,8 @@ class MonkeyEvaluator {
         props.value = node.value
         console.log("Boolean with value:", node.value)
         return new BooleanObj(props)
+      case "HashLiteral":
+        return this.evalHashLiteral(node)
       case "ExpressionStatement":
         return this.evaluate(node.expression)
       case "PrefixExpression":
@@ -264,7 +289,7 @@ class MonkeyEvaluator {
 
         const IndexObj = this.evalIndexExpression(left, index)
         if (IndexObj !== null) {
-          console.log("the ", index.value, " element of array is: ", IndexObj.inspect())
+          console.log("the index value is :", index.value, " with content: ", IndexObj.inspect())
         }
         return IndexObj
       case "FunctionLiteral":
@@ -561,20 +586,71 @@ class MonkeyEvaluator {
     return val
   }
 
-  // 执行数组下标运算
+  evalHashLiteral (node) {
+    /*
+      先递归的解析哈希表的key，然后解析它的value,对于如下类型的哈希表代码
+      let add = fn (x, y) { return x+y};
+      let byOne = fn (z) { return z+1;}
+      {add(1,2) : byOne(3)}
+      编译器先执行add(1,2)得到3，然后执行byOne(3)得到4
+    */
+    const props = {
+      keys: [],
+      values: []
+    }
+
+    for (let i = 0; i < node.keys.length; i++) {
+      //  执行键名表达式
+      const key = this.evaluate(node.keys[i])
+      if (this.isError(key)) {
+        return key
+      }
+
+      // 查询是否合法键名
+      if (this.hashable(key) !== true) {
+        return new this.Error("unhashable type:" +
+          key.type())
+      }
+
+      // 执行键值表达式
+      const value = this.evaluate(node.values[i])
+      if (this.isError(value)) {
+        return value
+      }
+
+      props.keys.push(key)
+      props.values.push(value)
+    }
+
+    const hashObj = new Hash(props)
+    console.log("eval hash object: ", hashObj.inspect())
+    return hashObj
+  }
+
+  // 合法hash键名表
+  hashable (node) {
+    if (node.type() === node.INTEGER_OBJ ||
+      node.type() === node.STRING_OBJ ||
+      node.type() === node.BOOLEAN_OBJ) {
+      return true
+    }
+
+    return false
+  }
+
+  // 执行下标运算
   evalIndexExpression (left, index) {
     if (left.type() === left.ARRAY_OBJ &&
       index.type() === index.INTEGER_OBJ) {
       return this.evalArrayIndexExpression(left, index)
-    } else if (left.type() !== left.ARRAY_OBJ) {
-      return this.isError("no Array")
-    } else if (index.type() !== index.INTEGER_OBJ) {
-      return this.isError("the index is not integer")
+    } else if (left.type() === left.HASH_OBJ) {
+      return this.evalHashIndexExpression(left, index)
     } else {
-      return this.newError("unknow error")
+      return this.newError("array index error or hash error")
     }
   }
 
+  // 数组下标运算
   evalArrayIndexExpression (array, index) {
     const idx = index.value
     const max = array.elements.length - 1
@@ -584,6 +660,23 @@ class MonkeyEvaluator {
     }
 
     return array.elements[idx]
+  }
+
+  // hash键名取值运算
+  evalHashIndexExpression (hash, index) {
+    if (!this.hashable(index)) {
+      return new this.Error("unhashable type: " + index.type())
+    }
+
+    for (let i = 0; i < hash.keys.length; i++) {
+      if (hash.keys[i].value === index.value) {
+        console.log("return hash value :",
+          hash.values[i].value)
+        return hash.values[i]
+      }
+    }
+
+    return null
   }
 
   // 内部API

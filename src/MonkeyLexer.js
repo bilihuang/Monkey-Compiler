@@ -58,7 +58,7 @@ class MonkeyLexer {
     this.FALSE = 17
     this.RETURN = 18
 
-    this.LEFT_BRACE = 19 // {}
+    this.LEFT_BRACE = 19 // {
     this.RIGHT_BRACE = 20 // }
     this.EQ = 21 // ==
     this.NOT_EQ = 22 // !=
@@ -67,6 +67,7 @@ class MonkeyLexer {
     this.STRING = 25 // 字符串
     this.LEFT_BRACKET = 26 // [
     this.RIGHT_BRACKET = 27 // ]
+    this.COLON = 28 // :
   }
 
   initKeywords () {
@@ -142,6 +143,8 @@ class MonkeyLexer {
         return "["
       case this.RIGHT_BRACKET:
         return "]"
+      case this.COLON:
+        return ":"
       default:
         return "unknow token"
     }
@@ -288,6 +291,9 @@ class MonkeyLexer {
         break
       case ']':
         tok = new Token(this.RIGHT_BRACKET, "]", lineCount)
+        break
+      case ':':
+        tok = new Token(this.COLON, ":", lineCount)
         break
       case -1:
         tok = new Token(this.EOF, "", lineCount)

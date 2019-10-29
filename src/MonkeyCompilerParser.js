@@ -131,7 +131,26 @@ class StringLiteral extends Node {
     super(props)
     this.token = props.token
     this.tokenLiteral = props.token.getLiteral()
+    this.value = this.tokenLiteral
     this.type = "String"
+  }
+}
+
+// 哈希对象
+class HashLiteral extends Expression {
+  constructor(props) {
+    super(props)
+    this.token = props.token //for '{'
+    //对应 expression:expression
+    this.keys = props.keys
+    this.values = props.values
+    this.type = "HashLiteral"
+    let s = "{"
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      s += `${this.keys[i].getLiteral()}:${this.values[i].getLiteral()}`
+      s += (i < len - 1) ? "," : "}"
+    }
+    this.tokenLiteral = s
   }
 }
 
@@ -261,7 +280,8 @@ class MonkeyCompilerParser {
       [this.lexer.IF]: this.parseIfExpression,
       [this.lexer.FUNCTION]: this.parseFunctionLiteral,
       [this.lexer.STRING]: this.parseStringLiteral,
-      [this.lexer.LEFT_BRACKET]: this.parseArrayLiteral
+      [this.lexer.LEFT_BRACKET]: this.parseArrayLiteral,
+      [this.lexer.LEFT_BRACE]: this.parseHashLiteral
     }
 
     // 中序表达式解析方法
@@ -494,6 +514,42 @@ class MonkeyCompilerParser {
       token: caller.curToken
     }
     return new StringLiteral(props)
+  }
+
+  parseHashLiteral (caller) {
+    const props = {
+      token: caller.curToken,
+      keys: [],
+      values: []
+    }
+    while (caller.peekTokenIs(caller.lexer.RIGHT_BRACE) !== true) {
+      caller.nextToken()
+      //先解析expression:expression中左边的算术表达式
+      const key = caller.parseExpression(caller.LOWEST)
+      //越过中间的冒号
+      if (!caller.expectPeek(caller.lexer.COLON)) {
+        return null
+      }
+      caller.nextToken()
+      //解析冒号右边的表达式
+      const value = caller.parseExpression(caller.LOWEST)
+      props.keys.push(key)
+      props.values.push(value)
+
+      //接下来必须跟着逗号或者右括号
+      if (!caller.peekTokenIs(caller.lexer.RIGHT_BRACE) &&
+        !caller.expectPeek(caller.lexer.COMMA)) {
+        return null
+      }
+    }
+
+    //最后必须以右括号结尾
+    if (!caller.expectPeek(caller.lexer.RIGHT_BRACE)) {
+      return null
+    }
+    const obj = new HashLiteral(props)
+    console.log("parsing map obj: ", obj.getLiteral())
+    return obj
   }
 
   // 解析组合表达式
