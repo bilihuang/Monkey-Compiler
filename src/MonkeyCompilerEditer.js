@@ -27,6 +27,9 @@ class MonkeyCompilerEditer extends Component {
         content: ""
       }
     }
+
+    // this.initLineNumberStyle()
+
     this.onDivContentChange = this.onDivContentChange.bind(this)
     this.showPopover = this.showPopover.bind(this)
     this.handleIdentifierOnMouseOver = this.handleIdentifierOnMouseOver.bind(this)
@@ -37,6 +40,7 @@ class MonkeyCompilerEditer extends Component {
   render () {
     const textAreaStyle = {
       height: 480,
+      padding: "5px",
       border: "1px solid black",
       borderRadius: "5px"
     }
@@ -53,6 +57,16 @@ class MonkeyCompilerEditer extends Component {
         {this.showPopover()}
       </div>
     )
+  }
+
+  // 初始化行号样式
+  initLineNumberStyle () {
+    let ruleClass = `span.${this.lineSpanNode}:before`
+    let rule = 'counter-increment: line;content: counter(line);display: inline-block;'
+    rule += 'border-right: 1px solid #ddd;padding: 0 .5em;'
+    rule += 'margin-right: .5em;color: #666;'
+    rule += 'pointer-events:all;'
+    document.styleSheets[1].addRule(ruleClass, rule)
   }
 
   // 展示取词信息弹框
@@ -131,7 +145,7 @@ class MonkeyCompilerEditer extends Component {
 
     // 在原关键字前插入新的高亮后的关键字
     let span = document.createElement('span')
-    span.style.color = 'blue'
+    span.style.color = '#FF4500'
     span.classList.add(this.keyWordClass)
     span.appendChild(document.createTextNode(token.getLiteral()))
     parentNode.insertBefore(span, elementNode)
@@ -183,9 +197,9 @@ class MonkeyCompilerEditer extends Component {
 
   // 编辑框内容改变时做预处理，
   onDivContentChange (evt) {
-		if (this.keyToIngore.indexOf(evt.key) >= 0) {
-			return
-		}
+    if (this.keyToIngore.indexOf(evt.key) >= 0) {
+      return
+    }
 
     // 记录光标位置
     let bookmark
@@ -205,7 +219,7 @@ class MonkeyCompilerEditer extends Component {
     // 把所有相邻的textNode合并成一个,防止出现如llet的解析问题
     currentLine.normalize()
 
-    this.identifierElementArray=[]
+    this.identifierElementArray = []
     // 只将这一行编译处理
     this.changeNode(currentLine)
     this.highLightSyntax()
@@ -260,6 +274,9 @@ class MonkeyCompilerEditer extends Component {
     let spanNode = document.createElement('span')
     spanNode.classList.add(this.lineSpanNode)
     spanNode.classList.add(this.lineNodeClass + l)
+
+    spanNode.dataset.lineNum = l 
+
     nd.parentNode.replaceChild(spanNode, nd)
     spanNode.appendChild(nd)
     return spanNode

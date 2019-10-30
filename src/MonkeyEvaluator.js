@@ -76,8 +76,9 @@ class ArrayObj extends BaseObject {
     let s = "["
     for (let i = 0, len = this.elements.length; i < len; i++) {
       s += this.elements[i].inspect()
-      s += (i < len - 1) ? "," : "]"
+      s += (i < len - 1) ? "," : ""
     }
+    s += "]"
     return s
   }
 }
@@ -98,8 +99,9 @@ class Hash extends BaseObject {
     let s = "{"
     for (let i = 0, len = this.keys.length; i < len; i++) {
       s += `${this.keys[i].inspect()}:${this.values[i].inspect()}`
-      s += (i < len - 1) ? "," : "}"
+      s += (i < len - 1) ? "," : ""
     }
+    s += "}"
     return s
   }
 }
@@ -166,8 +168,9 @@ class FunctionLiteral extends BaseObject {
     let s = "fn("
     for (let i = 0, len = this.parameters.length; i < len; i++) {
       s += this.parameters[i].tokenLiteral
-      s += (i < len - 1) ? ',' : `){\n${this.blockStatement.tokenLiteral}\n}`
+      s += (i < len - 1) ? ',' : ''
     }
+    s += `){\n${this.blockStatement.tokenLiteral}\n}`
     return s
   }
 }
@@ -296,6 +299,9 @@ class MonkeyEvaluator {
         props.token = node.token
         props.identifiers = node.parameters
         props.blockStatement = node.body
+
+        const funLiteral = new FunctionLiteral(props)
+        console.log(`define a funtion ${funLiteral.inspect()}`)
         // 返回函数调用对象以供调用
         const funObj = new FunctionCall(props)
         //为函数调用创建新的绑定环境

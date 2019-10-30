@@ -148,8 +148,9 @@ class HashLiteral extends Expression {
     let s = "{"
     for (let i = 0, len = this.keys.length; i < len; i++) {
       s += `${this.keys[i].getLiteral()}:${this.values[i].getLiteral()}`
-      s += (i < len - 1) ? "," : "}"
+      s += (i < len - 1) ? "," : ""
     }
+    s += "}"
     this.tokenLiteral = s
   }
 }
@@ -221,9 +222,9 @@ class FunctionLiteral extends Expression {
     let s = 'It is a nameless function, input parameters are: ('
     for (let i = 0, len = this.parameters.length; i < len; i++) {
       s += this.parameters[i].getLiteral()
-      s += (i !== len - 1) ? ", " : ")\n"
+      s += (i !== len - 1) ? ", " : ""
     }
-    s += `statements in function body are : {${this.body.getLiteral()}}`
+    s += `)\nstatements in function body are : {${this.body.getLiteral()}}`
     this.tokenLiteral = s
   }
 }
@@ -239,8 +240,9 @@ class CallExpression extends Expression {
     let s = `It is a function call : ${this.function.getLiteral()}\n It is input parameters are: (`
     for (let i = 0, len = this.arguments.length; i < len; i++) {
       s += this.arguments[i].getLiteral()
-      s += (i !== len - 1) ? ", " : ")"
+      s += (i !== len - 1) ? ", " : ""
     }
+    s += ")"
     this.tokenLiteral = s
   }
 }
